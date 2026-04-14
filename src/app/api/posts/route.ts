@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { postStore } from "@/lib/store";
+import dbConnect from "@/lib/mongodb";
+import Post from "@/models/Post";
+
+function slugify(text: string): string {
+  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
 
 export async function GET(req: NextRequest) {
+  await dbConnect();
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
   const category = searchParams.get("category");
@@ -10,13 +16,16 @@ export async function GET(req: NextRequest) {
   if (status) filter.status = status;
   if (category) filter.category = category;
 
-  return NextResponse.json(postStore.findAll(filter));
+  const posts = await Post.find(filter).sort({ createdAt: -1 }).lean();
+  return NextResponse.json(posts);
 }
 
 export async function POST(req: NextRequest) {
+  await dbConnect();
   const body = await req.json();
-  const post = postStore.create({
+  const post = await Post.create({
     title: body.title,
+    slug: slugify(body.title) + "-" + Date.now().toString(36),
     content: body.content,
     excerpt: body.excerpt,
     coverImage: body.coverImage || "",

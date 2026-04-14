@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { postStore } from "@/lib/store";
+import dbConnect from "@/lib/mongodb";
+import Post from "@/models/Post";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  const post = postStore.findById(params.id);
+  await dbConnect();
+  const post = await Post.findById(params.id).lean();
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(post);
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+  await dbConnect();
   const body = await req.json();
-  const post = postStore.update(params.id, {
+  const post = await Post.findByIdAndUpdate(params.id, {
     title: body.title,
     content: body.content,
     excerpt: body.excerpt,
@@ -18,13 +21,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     tags: body.tags,
     status: body.status,
     publishAt: body.publishAt,
-  });
+  }, { new: true, runValidators: true });
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(post);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const post = postStore.delete(params.id);
+  await dbConnect();
+  const post = await Post.findByIdAndDelete(params.id);
   if (!post) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ message: "Deleted" });
 }
