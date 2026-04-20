@@ -4,17 +4,30 @@ export function middleware(req: NextRequest) {
   const token = req.cookies.get("token")?.value;
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith("/admin")) {
-    if (!token) return NextResponse.redirect(new URL("/login", req.url));
-  }
+  // Public paths that don't require auth
+  const isPublic =
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname.startsWith("/api/auth/") ||
+    pathname.startsWith("/api/posts") ||
+    pathname.startsWith("/_next/") ||
+    pathname === "/icon.svg" ||
+    pathname === "/favicon.ico";
 
+  // Redirect logged-in users away from login/register
   if ((pathname === "/login" || pathname === "/register") && token) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  // Protect all non-public routes
+  if (!isPublic && !token) {
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/login", "/register"],
+  matcher: ["/((?!_next/static|_next/image|icon\\.svg|favicon\\.ico).*)"],
 };
